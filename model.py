@@ -3,7 +3,9 @@ import torch
 from transformers import AutoTokenizer, BartForConditionalGeneration, LogitsWarper
 from transformers import LogitsProcessor,LogitsProcessorList
 import wget
+import numpy as np
 import json
+
 
 models = {}
 def load_model(model_type='mimic', winsize=10):
@@ -56,7 +58,7 @@ def get_expr_token(expr):
 def prepare_inputs(example, tokenizer, config):
         #Rename
         qaaseq, query_species, sw_aa_size = example['qseq'], example['query_species'],  config['sw_aa_size']
-        if config['mimic']:
+        if config['inference_type'] == 'mimic':
           sseq, subject_species = example['subject_dna_seq'].split(" "), example['subject_species']
         else:
           sseq, subject_species = ['<mask_'+aa+'>' if aa!='-' else '<gap>' for aa in qaaseq], example['query_species']
@@ -70,17 +72,17 @@ def prepare_inputs(example, tokenizer, config):
         subject_dna_wins = ["<"+subject_species+"> "+wseq for wseq in subject_dna_wins]
 
         #Encode windows
-        input_ids = tokenizer(subject_dna_wins, query_aa_wins, return_tensors="pt", padding='max_length', max_length=sw_aa_size*2+3).input_ids
+        input_ids = tokenizer(query_aa_wins, subject_dna_wins, return_tensors="pt", padding='max_length', max_length=sw_aa_size*2+3).input_ids
         masked_ids = tokenizer(mask_aa_wins, return_tensors="pt").input_ids[:,1:-1]
         return input_ids,masked_ids
 
 
-def generate_outputs(input_ids, masked_ids, mask_restriction_dict, model, sw_aa_size):
+def generate_outputs(input_ids, masked_ids, mask_restriction_dict, model, config):
         logits_processor = LogitsProcessorList(
                 [RestrictToAaLogitsWarper(masked_ids, mask_restriction_dict)])
 
-        outputs = model.generate(input_ids, do_sample=False, output_scores = True, return_dict_in_generate = True, renormalize_logits = True, logits_processor=logits_processor, max_length=min((sw_aa_size+3),masked_ids.shape[-1]+2))
-        outputs = torch.stack(outputs['scores'][:sw_aa_size+1],1)
+        outputs = model.generate(input_ids, do_sample=False, output_scores = True, return_dict_in_generate = True, renormalize_logits = True, logits_processor=logits_processor, max_length=min((config['sw_aa_size']+3),masked_ids.shape[-1]+2))
+        outputs = torch.stack(outputs['scores'][:config['sw_aa_size']+1],1)
         return outputs
 
 
@@ -110,7 +112,7 @@ def calc_combined_gen_from_sliding_windows_logits(sw_logits, seqlen, sw_aa_size)
 
 def predict(config, example, mask_restriction_dict, tokenizer, model):
         input_ids, masked_ids = prepare_inputs(example, tokenizer, config)
-        outputs = generate_outputs(input_ids, masked_ids, mask_restriction_dict, model, config['sw_aa_size'])
+        outputs = generate_outputs(input_ids, masked_ids, mask_restriction_dict, model, config)
         logits, most_freq_pred = calc_combined_gen_from_sliding_windows_logits(outputs, len(example['qseq']), config['sw_aa_size'])
 
         ce = torch.nn.CrossEntropyLoss()
@@ -125,6 +127,8 @@ def predict(config, example, mask_restriction_dict, tokenizer, model):
         res['prot_AAs'] = example['qseq']
         res['pred_codons'] = tokenizer.decode(most_freq_pred.numpy().astype(int)[0])
         res['entropy'] = (-torch.nan_to_num(torch.exp(logits)*logits,nan=0.0).sum(dim=-1)).mean().item()
+        res['perposition_entropy'] = (-torch.nan_to_num(torch.exp(logits) * logits, nan=0.0).sum(dim=-1)).tolist()
+
 
         assert(res['prot_len']==len(res['pred_codons'].split(" ")))
 
@@ -134,12 +138,14 @@ def predict(config, example, mask_restriction_dict, tokenizer, model):
           true_vals = true_vals.tolist()[0]
           masked_most_freq_pred = most_freq_pred.masked_select(mask).numpy().astype(int)
           masked_true_vals = torch.tensor(true_vals).masked_select(mask).numpy().astype(int)
-
-          res['subject_codons'] = example['subject_dna_seq']
           res['num_of_correct_predicted_codons'] = sum([int(x==y) for x,y in zip(masked_true_vals, masked_most_freq_pred)])
           res['query_codons'] = example['query_dna_seq']
-          res['cross_entropy_loss'] = ce(logits, torch.tensor(true_vals)).item()
+          res['perplexity'] = np.exp(ce(logits, torch.tensor(true_vals)).item())
           res['accuracy'] = res['num_of_correct_predicted_codons'] / res['prot_len']
+
+        if config['inference_type']=='mimic':
+            res['subject_codons'] = example['subject_dna_seq']
+
         #print(example['qseqid'], example['sseqid'],res['cross_entropy_loss'], res['entropy'],res['accuracy'])
         return res
 

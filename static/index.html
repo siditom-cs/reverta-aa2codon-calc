@@ -1,126 +1,265 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Text Processing SPA</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-
-        #container {
-            max-width: 600px;
-            margin: 0 auto;
-            margin-bottom: 75px;
-        }
-
-        #aaseq {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-
-        #submit-button {
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-        }
-        .dropdown-container {
-            text-align: left; /* Align the label to the left */
-            margin-bottom: 10px;
-            margin-right: 200px;
-        }
-        #prediction {
-            display: none; /* Initially hide the result textarea */
-            max-width: 800px;
-            margin: 0 auto;
-            width: 100%;
-            padding: 10px;
-            text-align: left;
-        }
-        #res_codons {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        #res_entropy {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-    </style>
+    <title>ReverTra - Codon Optimization Tool</title>
+    <link rel="stylesheet" type="text/css" href="static/styles.css">
 </head>
 <body>
     <div id="container">
-        <h1>Codon Optimization Tool</h1>
-        <textarea id="aaseq" placeholder="Enter protein sequence here (Amino-Acid):"></textarea>
 
-        <div class="dropdown-container">
-            <label for="winsize">Model window size: </label>
-            <select id="winsize">
-                <option value=10>10</option>
-                <option value=30>30</option>
-                <option value=50>50</option>
-                <option value=75>75</option>
-                <option value=100>100</option>
-                <option value=150>150</option>
-            </select>
+        <h1>ReverTra - Codon Optimization Tool</h1>
+        <img src="static/uoh_logo.png" id="university-logo" alt="University of Haifa Logo">
+        <p id="description" style="text-align: left"><br>This codon optimization tool utilizes models developed by Tomer Sidi, Tamir Tuller, and Rachel Kolody. You can access the complete project code <a href="https://github.com/siditom-cs/RevertTra">here</a>.<br><br>
+            To utilize this tool for a particular target protein sequence (comprising amino acids exclusively), users are required to make selections regarding the model (winsize), host species, and the desired expression level percentile. The result will be a codon sequence of the same length as the target protein, tailored for the chosen host species and expression level percentile.
+            For additional insights into the methodology and models used, please refer to the details available [here]. <br>
+            <br>
+
+        </p>
+
+
+
+        <hr>
+        <h2>Model Configuration</h2>
+        <div style="display: flex">
+            <div class="dropdown-container">
+                <label for="stats_mode">Statistics mode:</label>
+                <select id="stats_mode">
+                    <option value="no">No statistics - AA Sequence Target</option>
+                    <option value="yes">Include statistics - Codon Sequence Target</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container">
+                <label for="inference_type">Inference type:</label>
+                <select id="inference_type">
+                    <option value="mask">Mask - no alignment</option>
+                    <option value="mimic">Mimic - alignment</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container">
+                <label for="winsize">Model window size:</label>
+                <select id="winsize">
+                    <option value="10">10</option>
+                    <option value="30">30</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                    <option value="100">100</option>
+                    <option value="150">150</option>
+                </select>
+            </div>
+        </div>
+        <p id="model_conf_desc" style="text-align: left">
+            (1) Statistics mode - Yes/No; the target sequence is an AA sequence. If statistics mode is activated, the user provides the codon sequence target, which the app uses to calculate the accuracy and perplexity of the predicted codon sequence. Notably, only proteins from the original target species were tested using this option. <br>
+            (2) Inference type - Mask/Mimic; the two inference type are presented at the paper. In mask mode the input to the model is the AA sequence of the target protein. In mimic mode, an additional codon sequence aligned to the target AA sequence is provided to the model. <br>
+            (3) Model window size - 10/30/50/75/100/150; In the paper, we present different model trained using different window sizes. Each option in this category activates a different model for prediction.
+        </p>
+        <!--
+        <p id="disclaimer_desc" style="color: red; text-align: left; font-weight: bold; font-size: 10px;">
+            * Disclaimer: the app output was not tested for generating codon sequences resulting with protein expression level as in the input, but for ability to predict the original codon sequence. Generating codon sequences not native to the species specified might have unexpected results.
+        </p>
+        -->
+        <hr>
+        <div style="text-align: justify; width: 100%; ">
+            <h2 style="display:inline-block; text-align:left;">Input</h2>
+            <button id="example-button">Example</button>
         </div>
 
-        <div class="dropdown-container">
-            <label for="species">Host species: </label>
-            <select id="species">
-                <option value="S_cerevisiae">S_Cerevisiae</option>
-                <option value="S_pombe">S_Pombe</option>
-                <option value="E_coli">E_Coli</option>
-                <option value="B_subtilis">B_Subtilis</option>
-            </select>
-        </div>
-        <div class="dropdown-container">
-            <label for="expr">Expression category: </label>
-            <select id="expr">
-                <option value="expr_top10">Top10 Percentile</option>
-            </select>
-        </div>
+        <div style="text-align: left;">
+            <div class="dropdown-container-input" >
+                <label for="species">Target species:</label>
+                <select id="species">
+                    <option value="S_cerevisiae">S_Cerevisiae</option>
+                    <option value="S_pombe">S_Pombe</option>
+                    <option value="E_coli">E_Coli</option>
+                    <option value="B_subtilis">B_Subtilis</option>
+                </select>
+            </div>
+            <div class="dropdown-container-input" id="mimic_species_menu" style="display: none">
+                <label for="mimic_species">Mimic species:</label>
+                <select id="mimic_species">
+                    <option value="S_cerevisiae">S_Cerevisiae</option>
+                    <option value="S_pombe">S_Pombe</option>
+                    <option value="E_coli">E_Coli</option>
+                    <option value="B_subtilis">B_Subtilis</option>
+                </select>
+            </div>
+            <div class="dropdown-container-input">
+                <label for="expr">Expression category:</label>
+                <select id="expr" style="text-align: left;">
+                    <option value="expr_top10">90-100 Percentile</option>
+                    <option value="expr_pre75_90">75-90 Percentile</option>
+                    <option value="expr_pre50_75">50-75 Percentile</option>
+                    <option value="expr_pre25_50">25-50 Percentile</option>
+                    <option value="expr_low25">0-25 Percentile</option>
+                    <option value="expr_unk">No Specified Expression</option>
+                </select>
+            </div>
 
-        <button id="submit-button">Predict Codons</button>
+        <div>
+            <label for="aaseq" style="text-align: left; margin-left: 1.5%; display: block">Enter target protein sequence here (Amino-Acid):</label>
+            <textarea id="aaseq" maxlength="10000" rows="4" placeholder="Enter target protein sequence here (Amino-Acids), one-letter representation with no spaces, use '-' to indicate a gap:"></textarea>
+            <textarea id="mimic_codon_sequence" rows="4" maxlength="10000" placeholder="Enter mimic codon sequence here (space delimited codons), in case of a gap insert <gap>:"></textarea>
+            <p id="error-message" style="color: red; display: none; text-align: left; font-weight: bold; margin-left: 1%;">This is an error message.</p>
+        </div>
+        </div>
+        <hr>
+
+        <button class="button" id="submit-button">Predict Codons</button>
+
 
     </div>
     <div id="prediction">
-            <label for="res_codons">Prediction: </label>
-            <textarea id="res_codons" placeholder="Result will appear here" readonly></textarea>
-            <div id="res_entropy"></div>
-    </div>
-    </div>
+        <label for="res_codons">Prediction:</label>
+        <textarea id="res_codons" rows="4" placeholder="Result will appear here" readonly></textarea>
+        <div class="res" id="res_entropy"></div>
+        <div class="res" id="res_accuracy"></div>
+        <div class="res" id="res_perplexity"></div>
+        <button class="button" id="download-prediction-button">Download Prediction</button>
 
+    </div>
+    <p><br><br><br><br></p>
+
+    <div id="bottom-bar">
+        <ul>
+            <li><a href="https://github.com/siditom-cs/RevertTra">Project Code</a></li>
+            <li><a href="https://github.com/siditom-cs/reverta-aa2codon-calc">Website Code</a></li>
+            <li>Contact: tsidi@univ.haifa.ac.il</li>
+
+        </ul>
+    </div>
     <script>
+
+        document.getElementById('example-button').addEventListener('click', function () {
+            const aaseq = document.getElementById('aaseq');
+
+            const winsize = document.getElementById('winsize');
+            const species = document.getElementById('species');
+            const expr = document.getElementById('expr');
+            const stats_flag = document.getElementById('stats_mode').value;
+            const infer_flag = document.getElementById('inference_type').value;
+
+            species.value = 'S_cerevisiae'
+            expr.value = 'expr_top10'
+            if (stats_flag === 'no') {
+                aaseq.value = 'KSVKFVQGLLQNAAANAEA-KGLDATKLYVSHIQVNQAPKQRRRTYRAHGRINKYESSPSHIELVVTEK'
+            } else {
+                aaseq.value = 'AAA TCT GTT AAG TTC GTT CAA GGT TTG TTG CAA AAC GCC GCT GCC AAT GCT GAA GCT <gap> AAG GGT CTA GAT GCT ACC AAG TTG TAC GTT TCT CAC ATC CAA GTT AAC CAA GCA CCA AAG CAA AGA AGA AGA ACT TAC AGA GCC CAC GGT AGA ATC AAC AAG TAC GAA TCT TCT CCA TCT CAC ATT GAA TTG GTT GTT ACC GAA AAG'
+            }
+            if (infer_flag === 'mimic') {
+                const mimic_species = document.getElementById('mimic_species');
+                mimic_species.value = 'E_coli';
+                const mimic_sequence = document.getElementById('mimic_codon_sequence');
+                mimic_sequence.value = 'AAA GCG GCT GTA CTG GTC AAG AAA GTT CTG GAA TCT GCC ATT GCT AAC GCT GAA CAC AAC GAT GGC GCT GAC ATT GAC GAT CTG AAA GTT ACG AAA ATT TTC GTA GAC GAA GGC CCG AGC ATG AAG CGC ATT ATG CCG CGT GCA AAA GGT CGT GCA GAT CGC ATC CTG AAG CGC ACC AGC CAC ATC ACT GTG GTT GTG TCC GAT CGC'
+            }
+
+        });
+
+        document.getElementById('stats_mode').addEventListener('change', function () {
+            const stats = document.getElementById('stats_mode').value;
+            if (stats === 'yes') {
+                document.getElementById('aaseq').placeholder = "Enter target protein sequence here (codons), single space separator between each codon, in case of a gap insert <gap>:";
+            } else {
+                document.getElementById('aaseq').placeholder = "Enter target protein sequence here (Amino-Acids), one-letter representation with no spaces, use '-' to indicate a gap:";
+            }
+        });
+
+        document.getElementById('inference_type').addEventListener('change', function () {
+            const infer_type = document.getElementById('inference_type').value;
+            console.log(infer_type)
+            if (infer_type === 'mimic') {
+                document.getElementById('mimic_species_menu').style.display = 'inline-block';
+                document.getElementById('mimic_codon_sequence').style.display = 'block';
+            } else {
+                document.getElementById('mimic_species_menu').style.display = 'none';
+                document.getElementById('mimic_codon_sequence').style.display = 'none';
+            }
+        });
+
         function predict_codons() {
             const aaseq = document.getElementById('aaseq').value;
             const winsize = document.getElementById('winsize').value;
             const species = document.getElementById('species').value;
             const expr = document.getElementById('expr').value;
+            const stats_flag = document.getElementById('stats_mode').value;
+            const infer_flag = document.getElementById('inference_type').value;
+
+            if (infer_flag === 'mask') {
+                form = new URLSearchParams({ aaseq: aaseq, winsize: winsize, species: species, expr: expr, stats_flag: stats_flag, infer_flag: infer_flag})
+            } else {
+                const mimic_codon_sequence = document.getElementById('mimic_codon_sequence').value;
+                const mimic_species = document.getElementById('mimic_species').value;
+                form = new URLSearchParams({ aaseq: aaseq, winsize: winsize, species: species, expr: expr, stats_flag: stats_flag, infer_flag: infer_flag, mimic_species:mimic_species, mimic_codon_sequence: mimic_codon_sequence})
+            }
 
             fetch('/pred/', {
                 method: 'POST',
-                body: new URLSearchParams({ aaseq: aaseq, winsize:winsize, species:species, expr:expr }),
+                body: form,
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
             })
                 .then((response) => response.json())
                 .then((data) => {
-                    document.getElementById('res_codons').innerText = data.pred_codons;
-                    document.getElementById('prediction').style.display = 'block';
-                    document.getElementById('res_entropy').innerText = 'Entropy: ' + data.entropy;
+                if (data.error) {
+                        // Display the error message
+                        const errorMessage = data.error;
+                        document.getElementById('error-message').style.display = 'block';
+                        document.getElementById('error-message').textContent = errorMessage;
+                    } else {
+                        document.getElementById('error-message').style.display = 'none';
+                        document.getElementById('error-message').value = "";
+                        document.getElementById('res_codons').innerText = data.pred_codons;
+                        document.getElementById('prediction').style.display = 'block';
+                        document.getElementById('res_entropy').innerText = 'Entropy: ' + data.entropy;
+                        if (data.accuracy && data.perplexity) {
+                            document.getElementById('res_accuracy').innerText = 'Accuracy: ' + data.accuracy;
+                            document.getElementById('res_perplexity').innerText = 'Perplexity: ' + data.perplexity;
+                        }
 
-                })
-                .catch((error) => {
+
+                        // Scroll to the prediction section
+                        window.scrollTo(0, document.body.scrollHeight);
+                        // Display the download button
+                        const downloadButton = document.getElementById('download-prediction-button');
+                        downloadButton.style.display = 'block';
+
+                        // Store the prediction data in a variable
+                        const predictionData = JSON.stringify( data, null, 2 );
+
+                        // Create an event listener for the download button
+                        downloadButton.addEventListener('click', function () {
+                            const blob = new Blob([predictionData], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'prediction.txt';
+                            a.style.display = 'none';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                           });
+
+                    }
+                }).catch((error) => {
                     console.error('Error:', error);
                 });
         }
 
-        // Attach the processText function to the button click event
         document.getElementById('submit-button').addEventListener('click', predict_codons);
+
+
+    </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KQ2BTDYQY2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-KQ2BTDYQY2');
     </script>
 </body>
+
 </html>
