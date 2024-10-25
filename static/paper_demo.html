@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ReverTra - Paper Models Demo </title>
+    <link rel="stylesheet" type="text/css" href="static/paper_demo.css">
+</head>
+<body>
+    <div id="top-bar">
+        <img src="static/uoh_logo.png" id="university-logo" alt="University of Haifa Logo">
+    </div>
+    <div id="container">
+
+        <h1>ReverTra - Inference for Test-Set proteins</h1>
+
+        <p id="description" style="text-align: left"><br>The test set sequences both for masking and mimicking mode inference are cached. Thus, the user can easily explore their individual performance (both the prediction vs. the evolutionarily selected codons and metrics to measure the prediction). For details of how the test-set was constructed, please see our <a href="https://www.biorxiv.org/content/10.1101/2024.02.11.579798v1">paper</a>.  
+            <br>
+            
+        </p>
+
+
+
+        <hr>
+        <h2>Model Configuration</h2>
+        <div style="display: flex">
+            <div class="dropdown-container" style="display: none">
+                <label for="stats_mode">Statistics mode:</label>
+                <select id="stats_mode">
+                    <option value="yes">Include statistics - Codon Sequence Target</option>
+                    <option value="no">No statistics - AA Sequence Target</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container">
+                <label for="inference_type">Inference type:</label>
+                <select id="inference_type">
+                    <option value="mask">Mask - no alignment</option>
+                    <option value="mimic">Mimic - alignment</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container">
+                <label for="winsize">Model window size:</label>
+                <select id="winsize">
+                    <option value="10">10</option>
+                    <option value="30">30</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                    <option value="100">100</option>
+                    <option value="150">150</option>
+                </select>
+            </div>
+        </div>
+        <p id="model_conf_desc" style="text-align: left ">
+            (1) Inference type - Mask/Mimic; the two inference type are presented at the paper. In mask mode the input to the model is the AA sequence of the target protein. In mimic mode, an additional codon sequence aligned to the target AA sequence is provided to the model. <br>
+            (2) Model window size - 10/30/50/75/100/150; In the paper, we present different model trained using different window sizes. Each option in this category activates a different model for prediction.
+        </p>
+        <!--
+        <p id="disclaimer_desc" style="color: red; text-align: left; font-weight: bold; font-size: 10px;">
+            * Disclaimer: the app output was not tested for generating codon sequences resulting with protein expression level as in the input, but for ability to predict the original codon sequence. Generating codon sequences not native to the species specified might have unexpected results.
+        </p>
+        -->
+
+
+
+        <hr>
+        <div style="text-align: justify; width: 100%; ">
+            <h2 style="display:inline-block; text-align:left;">Input</h2>
+        </div>
+
+
+
+        <div style="text-align: left;">
+            <div class="dropdown-container-input" >
+                <label for="species">Host species:</label>
+                <select id="species">
+                    <option value="None"></option>
+                    <option value="S_cerevisiae">S. cerevisiae</option>
+                    <option value="S_pombe">S. pombe</option>
+                    <option value="E_coli">E. coli</option>
+                    <option value="B_subtilis">B. subtilis</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container-input" >
+                <label for="dynamic-dropdown">Select test data entry:</label>
+                <select id="dynamic-dropdown">
+                    <option value="1"></option>
+                </select>
+
+            </div>
+
+
+            <div class="dropdown-container-input" id="mimic_species_menu" style="display: none">
+                <label for="mimic_species">Mimic species:</label>
+                <select id="mimic_species">
+                    <option value="S_cerevisiae">S. cerevisiae</option>
+                    <option value="S_pombe">S. pombe</option>
+                    <option value="E_coli">E. coli</option>
+                    <option value="B_subtilis">B. subtilis</option>
+                </select>
+            </div>
+
+        <div>
+
+            <label id='aasl' for="aas" style="text-align: left; margin-left: 0.5%; display: block">Host Amino Acid sequence:</label>
+            <textarea id="aas" maxlength="10000" readOnly="true" rows="1" placeholder="Host protein sequence (AAs), single space separator between each codon, in case of a gap insert <gap>:"></textarea>
+            <label id="mcsl" for="mimic_codon_sequence" style="text-align: left; margin-left: 0.5%; display: none;">Mimic codon sequence:</label>
+            <textarea id="mimic_codon_sequence" rows="4" maxlength="10000" placeholder="Mimic codon sequence (space delimited codons), in case of a gap insert <gap>:"></textarea>
+            <label id='aaseql' for="aaseq" style="text-align: left; margin-left: 0.5%; display: block">Host Codon Sequence (for evaluation only):</label>
+            <textarea id="aaseq" style="text-align: left; margin-left: 0.5%; display: block" maxlength="10000" readOnly="true" rows="4" placeholder="Host protein sequence (codons), single space separator between each codon, in case of a gap insert <gap>:"></textarea>
+
+
+            <p id="error-message" style="color: red; display: none; text-align: left; font-weight: bold; margin-left: 0.5%;">This is an error message.</p>
+        </div>
+        </div>
+        <hr>
+
+        <button class="button" id="submit-button">Predict Codons</button>
+
+
+    </div>
+    <div id="prediction">
+        <label for="res_codons">Codon sequence prediction in host species:</label>
+        <textarea id="res_codons" rows="4" placeholder="Result will appear here" readonly></textarea>
+        <div class="res" id="res_entropy"></div>
+        <div class="res" id="res_accuracy"></div>
+        <div class="res" id="res_perplexity"></div>
+        <button class="button" id="download-prediction-button">Download Prediction</button>
+
+    </div>
+
+    <p><br><br><br><br></p>
+
+    <div id="bottom-bar">
+        <ul>
+            <li><a href="https://github.com/siditom-cs/ReverTra">Project Code</a></li>
+            <li><a href="https://github.com/siditom-cs/reverta-aa2codon-calc">Website Code</a></li>
+            <li>Contact: tsidi@univ.haifa.ac.il</li>
+
+        </ul>
+    </div>
+    <script>
+
+
+        document.getElementById('inference_type').addEventListener('change', function () {
+            const infer_type = document.getElementById('inference_type').value;
+            console.log(infer_type)
+            if (infer_type === 'mimic') {
+                //document.getElementById('mimic_species_menu').style.display = 'inline-block';
+                document.getElementById('mcsl').style.display = 'block';
+                document.getElementById('mimic_codon_sequence').style.display = 'block';
+                document.getElementById('species').value = '';
+                document.getElementById('dynamic-dropdown').value = '';
+                document.getElementById('aaseq').value = '';
+                document.getElementById('mimic_codon_sequence').value = '';
+            } else {
+
+                document.getElementById('mcsl').style.display = 'none';
+                document.getElementById('mimic_species_menu').style.display = 'none';
+                document.getElementById('mimic_codon_sequence').style.display = 'none';
+                document.getElementById('species').value = '';
+                document.getElementById('dynamic-dropdown').value = '';
+                document.getElementById('aaseq').value = '';
+                document.getElementById('mimic_codon_sequence').value = '';
+            }
+
+        });
+
+
+
+        function predict_codons() {
+            const aaseq = document.getElementById('aaseq').value;
+            const winsize = document.getElementById('winsize').value;
+            const species = document.getElementById('species').value;
+            expr = document.getElementById('dynamic-dropdown').value.split(" ")[3];
+            expr = expr != 'None' ? expr : 'expr_unk';
+            console.log(expr);
+            const stats_flag = 'yes';
+            const infer_flag = document.getElementById('inference_type').value;
+
+            if (infer_flag === 'mask') {
+                form = new URLSearchParams({ aaseq: aaseq, winsize: winsize, species: species, expr: expr, stats_flag: stats_flag, infer_flag: infer_flag})
+            } else {
+                const mimic_codon_sequence = document.getElementById('mimic_codon_sequence').value;
+                const mimic_species = document.getElementById('mimic_species').value;
+                form = new URLSearchParams({ aaseq: aaseq, winsize: winsize, species: species, expr: expr, stats_flag: stats_flag, infer_flag: infer_flag, mimic_species:mimic_species, mimic_codon_sequence: mimic_codon_sequence})
+            }
+
+            fetch('/pred/', {
+                method: 'POST',
+                body: form,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                if (data.error) {
+                        // Display the error message
+                        const errorMessage = data.error;
+                        document.getElementById('error-message').style.display = 'block';
+                        document.getElementById('error-message').textContent = errorMessage;
+                    } else {
+                        document.getElementById('error-message').style.display = 'none';
+                        document.getElementById('error-message').value = "";
+                        document.getElementById('res_codons').innerText = data.pred_codons;
+                        document.getElementById('prediction').style.display = 'block';
+                        document.getElementById('res_entropy').innerText = 'Entropy: ' + data.entropy;
+                        if (data.accuracy && data.perplexity) {
+                            document.getElementById('res_accuracy').innerText = 'Accuracy: ' + data.accuracy;
+                            document.getElementById('res_perplexity').innerText = 'Perplexity: ' + data.perplexity;
+                        }
+
+                        // Scroll to the prediction section
+                        window.scrollTo(0, document.body.scrollHeight);
+                        // Display the download button
+                        const downloadButton = document.getElementById('download-prediction-button');
+                        downloadButton.style.display = 'block';
+
+                        // Store the prediction data in a variable
+                        const predictionData = JSON.stringify( data, null, 2 );
+
+                        // Create an event listener for the download button
+                        downloadButton.addEventListener('click', function () {
+                            const blob = new Blob([predictionData], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'prediction.txt';
+                            a.style.display = 'none';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                           });
+
+                    }
+                }).catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
+
+        document.getElementById('submit-button').addEventListener('click', predict_codons);
+
+        // Function to fetch and populate the dropdown
+        async function populateDropdown(species) {
+            try {
+                const infer_type = document.getElementById('inference_type').value;
+                file_infer_type = 'fs';
+                if (infer_type == 'mimic'){
+                    file_infer_type = 'hm';
+                }
+                const response = await fetch('static/testdata/'+species+'.'+file_infer_type+'.csv');
+                const values = await response.text();
+
+
+                const dropdown = document.getElementById('dynamic-dropdown');
+                dropdown.innerHTML = '';
+                values.split('\n').forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value.trim();
+                    option.text = value.trim();
+                    dropdown.appendChild(option);
+                });
+                dropdown.value = values.split('\n')[0];
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        async function update_input() {
+            try{
+                const infer_type = document.getElementById('inference_type').value;
+                file_infer_type = 'fs';
+                if (infer_type == 'mimic'){
+                    file_infer_type = 'hm';
+                }
+                const species = document.getElementById('species').value;
+                if (species != ""){
+
+                    console.log(document.getElementById('dynamic-dropdown').value);
+                    const entry = document.getElementById('dynamic-dropdown').value.split(" ")[0];
+
+                    const response = await fetch('static/testdata/'+species+'.'+file_infer_type+'.seq.csv');
+                    const values = await response.text();
+                    console.log(entry);
+                    console.log(values);
+                    line = values.split('\n')[entry-1];
+                    console.log(line);
+                    const aaseq = document.getElementById('aaseq');
+                    aaseq.value = line.split(",")[1];
+                    const aas = document.getElementById('aas');
+                    aas.value = line.split(",")[2];
+                    if (infer_type == 'mimic'){
+                        const mimic_sequence = document.getElementById('mimic_codon_sequence');
+                        mimic_sequence.value = line.split(",")[2];
+                        aas.value = line.split(",")[3];
+                    }
+
+                }
+
+
+            } catch (error) {
+                    console.error('Error:', error);
+            }
+            //content.split('\n').map((line, index) => `${index + 1}: ${line}`);
+        }
+
+        // Call the function to populate the dropdown
+
+        document.getElementById('species').addEventListener('change', function () {
+            const species = document.getElementById('species').value;
+            console.log(species);
+            populateDropdown(species);
+            update_input();
+        });
+
+        document.getElementById('dynamic-dropdown').addEventListener('click', update_input);
+
+    </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KQ2BTDYQY2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-KQ2BTDYQY2');
+    </script>
+</body>
+
+</html>

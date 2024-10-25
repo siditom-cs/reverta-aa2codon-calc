@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ReverTra - Codon Optimization Tool</title>
+    <link rel="stylesheet" type="text/css" href="static/out_of_host_model.css">
+</head>
+<body>
+    <div id="top-bar">
+        <img src="static/uoh_logo.png" id="university-logo" alt="University of Haifa Logo">
+    </div>
+    <div id="container">
+
+        <h1>ReverTra - Codon Optimization Tool</h1>
+        <p id="description" style="text-align: left">
+            <br>
+			ReverTra is a practical tool designed for mapping protein sequences (amino-acid) to species-optimized codon sequences. It relies on AI models (with a transformer architecture) that were developed by Tomer Sidi, Shir Bahiri-Elitzur, Tamir Tuller, and Rachel Kolody, to study the evolutionarily selected codons encoding proteins in 4 species: S. cerevisiae, S. pombe, E. coli, and B. subtilis. For detailed insights into the models, please refer to our paper <a href="https://www.biorxiv.org/content/10.1101/2024.02.11.579798v1">link</a> . The  project code can be found <a href="https://github.com/siditom-cs/ReverTra">here</a>, and you can also find there working notebooks for model inference and data exploration.
+            <br>
+            <br>
+            Codon usage plays a critical role in the efficiency of protein expression. In biological systems, different species exhibit variations in their preferred codon usage patterns, which can significantly impact translational efficiency and other aspects of gene expression. ReverTra predicts codon sequences for 4 host species: S. cerevisiae, S. pombe, E. coli, and B. subtilis. By providing a user-friendly tool for this purpose, we aim to empower researchers and bioengineers to streamline their protein expression efforts, facilitating more accurate and effective studies across diverse biological contexts.
+            <br>
+            <br>
+            To generate a codon sequence, the user must provide an out of host protein (amino-acid) sequence, specify the target host species, and desired expression level of the translated protein. Also, in the model configuration section the user can define the type of model to use for generating the sequences, which includes the window size on which the data was trained of sequences and whether to input the model a single sequence (amino-acid) or a pair of sequences that includes a codon sequence from the original trained hosts (i.e., mimicking).
+            <br>
+            
+        </p>
+
+        <p id="disclaimer_desc" style="color: red; text-align: left; font-weight: bold; font-size: 10px;">
+			* For inference of the test-set proteins in the paper please visit <a href="https://www.aa2codons.info/DEMO">ReverTra-Evaluation-TestSets</a>.
+        </p>
+
+
+
+        <hr>
+        <h2>Model Configuration</h2>
+        <div style="display: flex">
+            <div class="dropdown-container" style="display: none">
+                <label for="stats_mode">Statistics mode:</label>
+                <select id="stats_mode">
+                    <option value="no">No statistics - AA Sequence Target</option>
+                    <option value="yes">Include statistics - Codon Sequence Target</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container">
+                <label for="inference_type">Inference type:</label>
+                <select id="inference_type">
+                    <option value="mask">Mask - no alignment</option>
+                    <option value="mimic">Mimic - alignment</option>
+                </select>
+            </div>
+
+            <div class="dropdown-container">
+                <label for="winsize">Model window size:</label>
+                <select id="winsize">
+                    <option value="10">10</option>
+                    <option value="30">30</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                    <option value="100">100</option>
+                    <option value="150">150</option>
+                </select>
+            </div>
+        </div>
+        <p id="model_conf_desc" style="text-align: left">
+            (1) Inference type - Mask/Mimic; the two inference type are presented at the paper. In mask mode the input to the model is the AA sequence of the target protein. In mimic mode, an additional codon sequence aligned to the target AA sequence is provided to the model. <br>
+            (2) Model window size - 10/30/50/75/100/150; In the paper, we present different models trained with different window sizes. This selects the model for prediction.
+        </p>
+        <!--
+        <p id="disclaimer_desc" style="color: red; text-align: left; font-weight: bold; font-size: 10px;">
+            * Disclaimer: the app output was not tested for generating codon sequences resulting with protein expression level as in the input, but for ability to predict the original codon sequence. Generating codon sequences not native to the species specified might have unexpected results.
+        </p>
+        -->
+        <hr>
+        <div style="text-align: justify; width: 100%; ">
+            <h2 style="display:inline-block; text-align:left;">Input</h2>
+            <button id="example-button">Example</button>
+        </div>
+
+        <div style="text-align: left;">
+            <div class="dropdown-container-input" >
+                <label for="species">Host species:</label>
+                <select id="species">
+                    <option value="S_cerevisiae">S. cerevisiae</option>
+                    <option value="S_pombe">S. pombe</option>
+                    <option value="E_coli">E. coli</option>
+                    <option value="B_subtilis">B. subtilis</option>
+                </select>
+            </div>
+            <div class="dropdown-container-input" id="mimic_species_menu" style="display: none">
+                <label for="mimic_species">Mimic species:</label>
+                <select id="mimic_species">
+                    <option value="S_cerevisiae">S. cerevisiae</option>
+                    <option value="S_pombe">S. pombe</option>
+                    <option value="E_coli">E. coli</option>
+                    <option value="B_subtilis">B. subtilis</option>
+                </select>
+            </div>
+            <div class="dropdown-container-input">
+                <label for="expr">Expression category:</label>
+                <select id="expr" style="text-align: left;">
+                    <option value="expr_top10">90-100 Percentile</option>
+                    <option value="expr_pre75_90">75-90 Percentile</option>
+                    <option value="expr_pre50_75">50-75 Percentile</option>
+                    <option value="expr_pre25_50">25-50 Percentile</option>
+                    <option value="expr_low25">0-25 Percentile</option>
+                    <option value="expr_unk">No Specified Expression</option>
+                </select>
+            </div>
+
+        <div>
+            <label id='aaseql' for="aaseq" style="text-align: left; margin-left: 0.5%; display: block">Enter target protein sequence here (Amino-Acid):</label>
+            <textarea id="aaseq" style="text-align: left; margin-left: 0.5%; display: block" maxlength="10000" rows="4" placeholder="Enter target protein sequence here (Amino-Acids), one-letter representation with no spaces, use '-' to indicate a gap:"></textarea>
+            <label id="mcsl" for="mimic_codon_sequence" style="text-align: left; margin-left: 0.5%; display: none;">Enter mimic codon sequence:</label>
+            <textarea id="mimic_codon_sequence" rows="4" maxlength="10000" placeholder="Enter mimic codon sequence here (space delimited codons), in case of a gap insert <gap>:"></textarea>
+            <p id="error-message" style="color: red; display: none; text-align: left; font-weight: bold; margin-left: 0.5%;">This is an error message.</p>
+        </div>
+        </div>
+        <hr>
+
+        <button class="button" id="submit-button">Predict Codons</button>
+
+
+    </div>
+    <div id="prediction">
+        <label for="res_codons">Codon sequence prediction in host species:</label>
+        <textarea id="res_codons" rows="4" placeholder="Result will appear here" readonly></textarea>
+        <div class="res" id="res_entropy"></div>
+        <div class="res" id="res_accuracy"></div>
+        <div class="res" id="res_perplexity"></div>
+        <button class="button" id="download-prediction-button">Download Prediction</button>
+
+    </div>
+    <p><br><br><br><br></p>
+
+    <div id="bottom-bar">
+        <ul>
+            <li><a href="https://github.com/siditom-cs/ReverTra">Project Code</a></li>
+            <li><a href="https://github.com/siditom-cs/reverta-aa2codon-calc">Website Code</a></li>
+            <li>Contact: tsidi@univ.haifa.ac.il</li>
+
+        </ul>
+    </div>
+    <script>
+
+        document.getElementById('example-button').addEventListener('click', function () {
+            const aaseq = document.getElementById('aaseq');
+
+            const winsize = document.getElementById('winsize');
+            const species = document.getElementById('species');
+            const expr = document.getElementById('expr');
+            const stats_flag = document.getElementById('stats_mode').value;
+            const infer_flag = document.getElementById('inference_type').value;
+
+            species.value = 'S_cerevisiae'
+            expr.value = 'expr_top10'
+            if (stats_flag === 'no') {
+                //>sp|A1L190|SYCE3_HUMAN Synaptonemal complex central element protein 3 OS=Homo sapiens OX=9606 GN=SYCE3 PE=1 SV=1
+                aaseq.value = 'MDDADPEERNYDNMLKMLSDLNKDLEKLLEEMEKISVQATWMAYDMVVMRTNPTLAESMRRLEDAFVNCKEEMEKNWQELLHETKQRL'
+            } else {
+                aaseq.value = 'AAA TCT GTT AAG TTC GTT CAA GGT TTG TTG CAA AAC GCC GCT GCC AAT GCT GAA GCT <gap> AAG GGT CTA GAT GCT ACC AAG TTG TAC GTT TCT CAC ATC CAA GTT AAC CAA GCA CCA AAG CAA AGA AGA AGA ACT TAC AGA GCC CAC GGT AGA ATC AAC AAG TAC GAA TCT TCT CCA TCT CAC ATT GAA TTG GTT GTT ACC GAA AAG'
+            }
+            if (infer_flag === 'mimic') {
+                species.value = 'S_cerevisiae'
+                expr.value = 'expr_top10'
+                aaseq.value = 'KSVKFVQGLLQNAAANAEA-KGLDATKLYVSHIQVNQAPKQRRRTYRAHGRINKYESSPSHIELVVTEK'
+                const mimic_species = document.getElementById('mimic_species');
+                mimic_species.value = 'E_coli';
+                const mimic_sequence = document.getElementById('mimic_codon_sequence');
+                mimic_sequence.value = 'AAA GCG GCT GTA CTG GTC AAG AAA GTT CTG GAA TCT GCC ATT GCT AAC GCT GAA CAC AAC GAT GGC GCT GAC ATT GAC GAT CTG AAA GTT ACG AAA ATT TTC GTA GAC GAA GGC CCG AGC ATG AAG CGC ATT ATG CCG CGT GCA AAA GGT CGT GCA GAT CGC ATC CTG AAG CGC ACC AGC CAC ATC ACT GTG GTT GTG TCC GAT CGC'
+            }
+
+        });
+
+        document.getElementById('inference_type').addEventListener('change', function () {
+            const infer_type = document.getElementById('inference_type').value;
+            console.log(infer_type)
+            if (infer_type === 'mimic') {
+                document.getElementById('mimic_species_menu').style.display = 'inline-block';
+                document.getElementById('mimic_codon_sequence').style.display = 'block';
+                document.getElementById('mcsl').style.display = 'block';
+            } else {
+                document.getElementById('mcsl').style.display = 'none';
+                document.getElementById('mimic_species_menu').style.display = 'none';
+                document.getElementById('mimic_codon_sequence').style.display = 'none';
+            }
+        });
+
+        function predict_codons() {
+            const aaseq = document.getElementById('aaseq').value;
+            const winsize = document.getElementById('winsize').value;
+            const species = document.getElementById('species').value;
+            const expr = document.getElementById('expr').value;
+            const stats_flag = document.getElementById('stats_mode').value;
+            const infer_flag = document.getElementById('inference_type').value;
+
+            if (infer_flag === 'mask') {
+                form = new URLSearchParams({ aaseq: aaseq, winsize: winsize, species: species, expr: expr, stats_flag: stats_flag, infer_flag: infer_flag})
+            } else {
+                const mimic_codon_sequence = document.getElementById('mimic_codon_sequence').value;
+                const mimic_species = document.getElementById('mimic_species').value;
+                form = new URLSearchParams({ aaseq: aaseq, winsize: winsize, species: species, expr: expr, stats_flag: stats_flag, infer_flag: infer_flag, mimic_species:mimic_species, mimic_codon_sequence: mimic_codon_sequence})
+            }
+
+            fetch('/pred/', {
+                method: 'POST',
+                body: form,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                if (data.error) {
+                        // Display the error message
+                        const errorMessage = data.error;
+                        document.getElementById('error-message').style.display = 'block';
+                        document.getElementById('error-message').textContent = errorMessage;
+                    } else {
+                        document.getElementById('error-message').style.display = 'none';
+                        document.getElementById('error-message').value = "";
+                        document.getElementById('res_codons').innerText = data.pred_codons;
+                        document.getElementById('prediction').style.display = 'block';
+                        document.getElementById('res_entropy').innerText = 'Entropy: ' + data.entropy;
+                        if (data.accuracy && data.perplexity) {
+                            document.getElementById('res_accuracy').innerText = 'Accuracy: ' + data.accuracy;
+                            document.getElementById('res_perplexity').innerText = 'Perplexity: ' + data.perplexity;
+                        }
+
+
+                        // Scroll to the prediction section
+                        window.scrollTo(0, document.body.scrollHeight);
+                        // Display the download button
+                        const downloadButton = document.getElementById('download-prediction-button');
+                        downloadButton.style.display = 'block';
+
+                        // Store the prediction data in a variable
+                        const predictionData = JSON.stringify( data, null, 2 );
+
+                        // Create an event listener for the download button
+                        downloadButton.addEventListener('click', function () {
+                            const blob = new Blob([predictionData], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'prediction.txt';
+                            a.style.display = 'none';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                           });
+
+                    }
+                }).catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
+
+        document.getElementById('submit-button').addEventListener('click', predict_codons);
+
+
+    </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KQ2BTDYQY2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-KQ2BTDYQY2');
+    </script>
+</body>
+
+</html>
