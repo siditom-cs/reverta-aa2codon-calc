@@ -11,18 +11,25 @@ app = FastAPI()
 
 # Mount the "static" directory to serve static files (e.g., index.html)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
 # Define a route for your SPA
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     # Read and return the HTML file
     load_model('mimic', 10)
 
-    with open("static/index.html", "r") as file:
+    with open("static/out_of_host_model.html", "r") as file:
         html_content = file.read()
     return HTMLResponse(content=html_content)
 
+# Define a route for your SPA
+@app.get("/DEMO", response_class=HTMLResponse)
+async def read_root():
+    # Read and return the HTML file
+    load_model('mimic', 10)
+
+    with open("static/paper_demo.html", "r") as file:
+        html_content = file.read()
+    return HTMLResponse(content=html_content)
 
 # Your text processing function
 def mask_inference_prediction(info):
@@ -80,6 +87,18 @@ def validate_codons(codon_sequence):
             return False, token
     return True, None
 
+def validate_mimic_codons(codon_sequence):
+    codons = ['AAA', 'AAC', 'AAT', 'AAG', 'ACA', 'ACC', 'ACT', 'ACG', 'ATA', 'ATC', 'ATT', 'ATG', 'AGA', 'AGC', 'AGT', 'AGG', 'CAA', 'CAC', 'CAT', 'CAG', 'CCA', 'CCC', 'CCT', 'CCG', 'CTA', 'CTC', 'CTT', 'CTG', 'CGA', 'CGC', 'CGT', 'CGG', 'TAA', 'TAC', 'TAT', 'TAG', 'TCA', 'TCC', 'TCT', 'TCG', 'TTA', 'TTC', 'TTT', 'TTG', 'TGA', 'TGC', 'TGT', 'TGG', 'GAA', 'GAC', 'GAT', 'GAG', 'GCA', 'GCC', 'GCT', 'GCG', 'GTA', 'GTC', 'GTT', 'GTG', 'GGA', 'GGC', 'GGT', 'GGG', '<gap>']
+    aas = "YMRS*WILNQFPHDCAGTEKV"
+    aa_masks = ['<mask_'+aa+'>' for aa in aas]
+    available_tokens = [*codons, *aa_masks]
+    token_list = codon_sequence.split(" ")
+
+    for token in token_list:
+        if not token in available_tokens:
+            return False, token
+    return True, None
+
 def validate_aas(aaseq: str):
     aaseq = aaseq.upper()
     aas = "YMRS*WILNQFPHDCAGTEKV-"
@@ -121,7 +140,7 @@ async def process_text_endpoint(aaseq: str = Form(...), winsize: int = Form(...)
                 'error': "Token " + token + " in target sequence is not an amino-acid character (or gap). Please insert amino-acid chars or 'gap' without spaces."}
 
     if infer_flag == 'mimic':
-        flag, token = validate_codons(mimic_codon_sequence)
+        flag, token = validate_mimic_codons(mimic_codon_sequence)
         if not flag:
             return {
                 'error': "Token " + token + " in mimic codon sequence is not a codon. Please insert a codon only sequence (or gap as <gap>)."}
